@@ -1,4 +1,5 @@
 from datetime import datetime
+from . import health
 
 def instant(value): return datetime.fromisoformat(value.replace('Z','+00:00'))
 
@@ -33,10 +34,7 @@ def calculate(events):
         out['退回交割责任']=d('退回' if not ownership else '无退回','无权属链的电池需归还提供者',o['id'])
         states.append(('来源与回收账',pack_id,'隔离' if recalled or not ownership else '接收',o.get('version',1)))
     for cell_id,t in tests.items():
-        calibrated=t.get('calibrated',False) and instant(t['calibration_start'])<=instant(t['tested_at'])<instant(t['calibration_end'])
-        health=t.get('capacity_ah',0)>=70 and t.get('resistance_mohm',999)<=10 and t.get('temp_c',999)<=45
-        independent=retest_agrees(t)
-        grade='合格' if calibrated and health and independent and t.get('sample_count',0)>=2 else '待核或报废'
+        calibrated,healthy,independent,grade=health.evaluate(t)
         for name,result,reason in [
             ('检测校准可信裁定','有效' if calibrated else '无效','校准覆盖测量时刻才能采信'),
             ('电芯健康分档',grade,'容量、内阻、温升及独立复测联合判定'),
@@ -87,3 +85,5 @@ RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['ow
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]
     return [(subsystem,name,str(event[key]),{field:event.get(field) for field in fields}) for name,fields in specs]
+
+
