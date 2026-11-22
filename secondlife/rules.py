@@ -1,4 +1,5 @@
 from datetime import datetime
+from . import alarm_capture
 
 def instant(value): return datetime.fromisoformat(value.replace('Z','+00:00'))
 
@@ -50,7 +51,7 @@ def calculate(events):
             out[name]=d(good if all_good else bad,'全批电芯逐一核验后形成汇总结论',*(t['id'] for t in tests.values()))
     alarm_packs=set()
     for s in strings.values():
-        if s.get('alarm') and s.get('alarm_sensor_valid') and s.get('alarm_witnessed'):
+        if alarm_capture.confirmed(s):
             alarm_packs.update(tests[c]['pack_id'] for c in s.get('cells',[]) if c in tests)
     for string_id,s in strings.items():
         cells=[tests.get(x) for x in s.get('cells',[])]
@@ -62,8 +63,8 @@ def calculate(events):
                     and s.get('protection_trip_ms',999)<=s.get('max_trip_ms',0)
                     and len(set(s.get('signed_by',[])))>=2
                     and instant(s['signed_at'])<instant(s['permit_until']))
-        alarm=s.get('alarm',False)
-        confirmed_alarm=alarm and s.get('alarm_sensor_valid') and s.get('alarm_witnessed')
+        alarm=alarm_capture.observed(s)
+        confirmed_alarm=alarm_capture.confirmed(s)
         shared_alarm=any(c and c.get('pack_id') in alarm_packs for c in cells)
         deploy=compatible and origin_ok and protection and not shared_alarm and not alarm
         out[f'组串相容配置:{string_id}']=d('相容' if compatible else '待重组','电芯健康及容量离散度共同约束',s['id'],*(c['id'] for c in cells if c))
@@ -87,3 +88,4 @@ RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['ow
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]
     return [(subsystem,name,str(event[key]),{field:event.get(field) for field in fields}) for name,fields in specs]
+
