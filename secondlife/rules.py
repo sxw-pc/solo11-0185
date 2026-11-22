@@ -10,6 +10,12 @@ def latest(events,kind,key):
 
 def d(result,reason,*ids): return {'result':result,'reason':reason,'evidence':[x for x in ids if x]}
 
+def retest_agrees(t):
+    return (t.get('operator')!=t.get('retest_operator')
+            and abs(t.get('capacity_ah',0)-t.get('retest_capacity_ah',-999))<=5
+            and abs(t.get('resistance_mohm',999)-t.get('retest_resistance_mohm',-999))<=2
+            and abs(t.get('temp_c',999)-t.get('retest_temp_c',-999))<=5)
+
 def calculate(events):
     origins=latest(events,'origin','pack_id')
     tests=latest(events,'test','cell_id')
@@ -29,27 +35,51 @@ def calculate(events):
     for cell_id,t in tests.items():
         calibrated=t.get('calibrated',False) and instant(t['calibration_start'])<=instant(t['tested_at'])<instant(t['calibration_end'])
         health=t.get('capacity_ah',0)>=70 and t.get('resistance_mohm',999)<=10 and t.get('temp_c',999)<=45
-        independent=t.get('operator')!=t.get('retest_operator')
-        grade='合格' if calibrated and health and independent else '待核或报废'
-        out['检测校准可信裁定']=d('有效' if calibrated else '无效','校准覆盖测量时刻才能采信',t['id'])
-        out['电芯健康分档']=d(grade,'容量、内阻、温升联合判定',t['id'])
-        out['复测争议裁定']=d('裁定' if independent else '争议','复测需由独立实验员完成',t['id'])
-        out['检测批次抽样覆盖']=d('覆盖' if t.get('sample_count',0)>=2 else '不足','样本数量不足不得签认整批',t['id'])
+        independent=retest_agrees(t)
+        grade='合格' if calibrated and health and independent and t.get('sample_count',0)>=2 else '待核或报废'
+        for name,result,reason in [
+            ('检测校准可信裁定','有效' if calibrated else '无效','校准覆盖测量时刻才能采信'),
+            ('电芯健康分档',grade,'容量、内阻、温升及独立复测联合判定'),
+            ('复测争议裁定','裁定' if independent else '争议','独立实验员读数需在容差内'),
+            ('检测批次抽样覆盖','覆盖' if t.get('sample_count',0)>=2 else '不足','样本数量不足不得签认整批')]:
+            out[f'{name}:{cell_id}']=d(result,reason,t['id'])
         states.append(('检测与分选账',cell_id,grade,t.get('version',1)))
+    if tests:
+        for name,good,bad in [('检测校准可信裁定','有效','无效'),('电芯健康分档','合格','待核或报废'),('复测争议裁定','裁定','争议'),('检测批次抽样覆盖','覆盖','不足')]:
+            all_good=all(out[f'{name}:{cell}']['result']==good for cell in tests)
+            out[name]=d(good if all_good else bad,'全批电芯逐一核验后形成汇总结论',*(t['id'] for t in tests.values()))
+    alarm_packs=set()
+    for s in strings.values():
+        if s.get('alarm') and s.get('alarm_sensor_valid') and s.get('alarm_witnessed'):
+            alarm_packs.update(tests[c]['pack_id'] for c in s.get('cells',[]) if c in tests)
     for string_id,s in strings.items():
         cells=[tests.get(x) for x in s.get('cells',[])]
         packs=[origins.get(c.get('pack_id')) for c in cells if c]
-        compatible=len(cells)>=2 and all(c and c.get('calibrated') and instant(c['calibration_start'])<=instant(c['tested_at'])<instant(c['calibration_end']) and c.get('capacity_ah',0)>=70 and c.get('resistance_mohm',999)<=10 and c.get('temp_c',999)<=45 and c.get('operator')!=c.get('retest_operator') for c in cells)
+        compatible=len(cells)>=2 and all(c and out.get(f'电芯健康分档:{c["cell_id"]}',{}).get('result')=='合格' for c in cells)
         compatible=compatible and max((c['capacity_ah'] for c in cells if c),default=0)-min((c['capacity_ah'] for c in cells if c),default=0)<=10
         origin_ok=bool(packs) and all(p and p.get('owner_chain') and p['owner_chain'][-1]==p.get('claimed_owner') and not p.get('recalled') and (len({e.get('claimed_owner') for e in events if e['kind']=='origin' and e['pack_id']==p['pack_id']})==1 or p.get('transfer_documented',False)) for p in packs)
-        protection=s.get('protection_ok',False)
+        protection=(s.get('protection_ok',False)
+                    and s.get('protection_trip_ms',999)<=s.get('max_trip_ms',0)
+                    and len(set(s.get('signed_by',[])))>=2
+                    and instant(s['signed_at'])<instant(s['permit_until']))
         alarm=s.get('alarm',False)
-        deploy=compatible and origin_ok and protection and not alarm
-        out['组串相容配置']=d('相容' if compatible else '待重组','电芯健康及容量离散度共同约束',s['id'],*(c['id'] for c in cells if c))
-        out['投运条件确认']=d('投运' if deploy else '停运','来源、分档、保护器测试和告警共同决定',s['id'],*(p['id'] for p in packs if p))
-        out['告警隔离追责']=d('隔离' if alarm else '正常','运行温升告警关联组串与来源批次',s['id'])
-        out['退役拆组许可']=d('许可' if not alarm and not deploy else '禁止','告警期间或仍投运时不可拆组',s['id'])
+        confirmed_alarm=alarm and s.get('alarm_sensor_valid') and s.get('alarm_witnessed')
+        shared_alarm=any(c and c.get('pack_id') in alarm_packs for c in cells)
+        deploy=compatible and origin_ok and protection and not shared_alarm and not alarm
+        out[f'组串相容配置:{string_id}']=d('相容' if compatible else '待重组','电芯健康及容量离散度共同约束',s['id'],*(c['id'] for c in cells if c))
+        out[f'投运条件确认:{string_id}']=d('投运' if deploy else '停运','来源、分档、保护器测试和同源告警共同决定',s['id'],*(p['id'] for p in packs if p))
+        out[f'告警隔离追责:{string_id}']=d('直接隔离' if confirmed_alarm else ('待核' if alarm else ('同源隔离' if shared_alarm else '正常')),'有效传感器与独立见证的告警才传播到同源其他组串',s['id'])
+        out[f'退役拆组许可:{string_id}']=d('许可' if not shared_alarm and not alarm and not deploy else '禁止','告警期间或仍投运时不可拆组',s['id'])
         states.append(('组串与投运账',string_id,'投运' if deploy else '停运',s.get('version',1)))
+    if strings:
+        for name,good,bad in [('组串相容配置','相容','待重组'),('投运条件确认','投运','停运'),('告警隔离追责','正常','隔离'),('退役拆组许可','禁止','部分许可')]:
+            all_good=all(out[f'{name}:{sid}']['result']==good for sid in strings)
+            out[name]=d(good if all_good else bad,'全部组串逐一核定后的汇总结论',*(s['id'] for s in strings.values()))
+        alarm_results=[out[f'告警隔离追责:{sid}']['result'] for sid in strings]
+        if not any(x in ('直接隔离','同源隔离') for x in alarm_results) and '待核' in alarm_results:
+            out['告警隔离追责']['result']='待核'
+        retire_results=[out[f'退役拆组许可:{sid}']['result'] for sid in strings]
+        if all(x=='许可' for x in retire_results): out['退役拆组许可']['result']='许可'
     return out,states
 
 RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['owner_valid', 'duplicate']), ('召回公告', ['recalled'])]), 'test': ('检测与分选账', 'cell_id', [('检测读数', ['capacity_ah', 'resistance_mohm', 'temp_c', 'sample_count']), ('校准复测', ['calibrated', 'retest_independent'])]), 'string': ('组串与投运账', 'string_id', [('组串配置', ['cells', 'protection_ok']), ('运行告警', ['alarm'])])}

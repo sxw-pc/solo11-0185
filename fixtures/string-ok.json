@@ -9,6 +9,38 @@
     ],
     "protection_ok": true,
     "alarm": false,
-    "version": 1
+    "version": 1,
+    "protection_trip_ms": 40,
+    "max_trip_ms": 50,
+    "signed_by": [
+      "operator",
+      "inspector"
+    ],
+    "signed_at": "2026-06-02T10:00:00Z",
+    "permit_until": "2026-07-02T10:00:00Z",
+    "alarm_sensor_valid": true,
+    "alarm_witnessed": true
+  },
+  {
+    "id": "S3",
+    "kind": "string",
+    "string_id": "STR2",
+    "cells": [
+      "C3",
+      "C4"
+    ],
+    "protection_ok": true,
+    "alarm": false,
+    "version": 1,
+    "protection_trip_ms": 40,
+    "max_trip_ms": 50,
+    "signed_by": [
+      "operator",
+      "inspector"
+    ],
+    "signed_at": "2026-06-02T10:00:00Z",
+    "permit_until": "2026-07-02T10:00:00Z",
+    "alarm_sensor_valid": true,
+    "alarm_witnessed": true
   }
 ]

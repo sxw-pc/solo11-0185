@@ -14,7 +14,10 @@
     "operator": "LAB-A",
     "retest_operator": "LAB-B",
     "sample_count": 3,
-    "version": 1
+    "version": 1,
+    "retest_capacity_ah": 83,
+    "retest_resistance_mohm": 7,
+    "retest_temp_c": 32
   },
   {
     "id": "T3",
@@ -31,6 +34,49 @@
     "operator": "LAB-A",
     "retest_operator": "LAB-C",
     "sample_count": 3,
-    "version": 1
+    "version": 1,
+    "retest_capacity_ah": 88,
+    "retest_resistance_mohm": 8,
+    "retest_temp_c": 33
+  },
+  {
+    "id": "T4",
+    "kind": "test",
+    "cell_id": "C3",
+    "pack_id": "P1",
+    "calibrated": true,
+    "calibration_start": "2026-01-01T00:00:00Z",
+    "calibration_end": "2026-12-31T00:00:00Z",
+    "tested_at": "2026-06-01T12:00:00Z",
+    "capacity_ah": 80,
+    "resistance_mohm": 7,
+    "temp_c": 31,
+    "operator": "LAB-A",
+    "retest_operator": "LAB-B",
+    "sample_count": 3,
+    "version": 1,
+    "retest_capacity_ah": 81,
+    "retest_resistance_mohm": 7,
+    "retest_temp_c": 32
+  },
+  {
+    "id": "T5",
+    "kind": "test",
+    "cell_id": "C4",
+    "pack_id": "P1",
+    "calibrated": true,
+    "calibration_start": "2026-01-01T00:00:00Z",
+    "calibration_end": "2026-12-31T00:00:00Z",
+    "tested_at": "2026-06-01T12:05:00Z",
+    "capacity_ah": 84,
+    "resistance_mohm": 8,
+    "temp_c": 32,
+    "operator": "LAB-A",
+    "retest_operator": "LAB-C",
+    "sample_count": 3,
+    "version": 1,
+    "retest_capacity_ah": 85,
+    "retest_resistance_mohm": 8,
+    "retest_temp_c": 33
   }
 ]
