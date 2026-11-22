@@ -1,4 +1,5 @@
 from datetime import datetime
+from . import custody
 
 def instant(value): return datetime.fromisoformat(value.replace('Z','+00:00'))
 
@@ -22,11 +23,7 @@ def calculate(events):
     strings=latest(events,'string','string_id')
     out={}; states=[]
     for pack_id,o in origins.items():
-        chain=o.get('owner_chain',[])
-        competing={e.get('claimed_owner') for e in events if e['kind']=='origin' and e['pack_id']==pack_id}
-        duplicate=len(competing)>1 and not o.get('transfer_documented',False)
-        ownership=bool(chain) and chain[-1]==o.get('claimed_owner') and not duplicate
-        recalled=o.get('recalled',False)
+        ownership,duplicate,recalled=custody.evaluate(o,events)
         out['退役包来源裁定']=d('接收' if ownership else '隔离','权属链及序列号重复核验',o['id'])
         out['召回范围传播']=d('隔离' if recalled else '未召回','来源公告与组串引用交叉传播',o['id'])
         out['来源重复入库防双用']=d('争议' if duplicate else '唯一','同一序列号不能被两个回收批次双用',o['id'])
@@ -87,3 +84,4 @@ RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['ow
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]
     return [(subsystem,name,str(event[key]),{field:event.get(field) for field in fields}) for name,fields in specs]
+
