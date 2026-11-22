@@ -1,0 +1,16 @@
+[
+  {
+    "id": "O1",
+    "kind": "origin",
+    "pack_id": "P1",
+    "owner_chain": [
+      "factory",
+      "fleet",
+      "recycler"
+    ],
+    "claimed_owner": "recycler",
+    "transfer_documented": false,
+    "recalled": false,
+    "version": 1
+  }
+]

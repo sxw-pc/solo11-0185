@@ -1,0 +1,19 @@
+[
+  {
+    "id": "T2",
+    "kind": "test",
+    "cell_id": "C1",
+    "pack_id": "P1",
+    "calibrated": false,
+    "calibration_start": "2026-01-01T00:00:00Z",
+    "calibration_end": "2026-05-31T00:00:00Z",
+    "tested_at": "2026-06-01T12:00:00Z",
+    "capacity_ah": 54,
+    "resistance_mohm": 15,
+    "temp_c": 55,
+    "operator": "LAB-A",
+    "retest_operator": "LAB-A",
+    "sample_count": 1,
+    "version": 2
+  }
+]

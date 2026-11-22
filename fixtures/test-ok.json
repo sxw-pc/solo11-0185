@@ -1,0 +1,36 @@
+[
+  {
+    "id": "T1",
+    "kind": "test",
+    "cell_id": "C1",
+    "pack_id": "P1",
+    "calibrated": true,
+    "calibration_start": "2026-01-01T00:00:00Z",
+    "calibration_end": "2026-12-31T00:00:00Z",
+    "tested_at": "2026-06-01T12:00:00Z",
+    "capacity_ah": 82,
+    "resistance_mohm": 7,
+    "temp_c": 31,
+    "operator": "LAB-A",
+    "retest_operator": "LAB-B",
+    "sample_count": 3,
+    "version": 1
+  },
+  {
+    "id": "T3",
+    "kind": "test",
+    "cell_id": "C2",
+    "pack_id": "P1",
+    "calibrated": true,
+    "calibration_start": "2026-01-01T00:00:00Z",
+    "calibration_end": "2026-12-31T00:00:00Z",
+    "tested_at": "2026-06-01T12:05:00Z",
+    "capacity_ah": 87,
+    "resistance_mohm": 8,
+    "temp_c": 32,
+    "operator": "LAB-A",
+    "retest_operator": "LAB-C",
+    "sample_count": 3,
+    "version": 1
+  }
+]

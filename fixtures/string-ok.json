@@ -1,0 +1,14 @@
+[
+  {
+    "id": "S1",
+    "kind": "string",
+    "string_id": "STR1",
+    "cells": [
+      "C1",
+      "C2"
+    ],
+    "protection_ok": true,
+    "alarm": false,
+    "version": 1
+  }
+]
