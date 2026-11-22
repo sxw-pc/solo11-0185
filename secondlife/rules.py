@@ -1,4 +1,5 @@
 from datetime import datetime
+from . import protection_capture
 
 def instant(value): return datetime.fromisoformat(value.replace('Z','+00:00'))
 
@@ -58,10 +59,7 @@ def calculate(events):
         compatible=len(cells)>=2 and all(c and out.get(f'电芯健康分档:{c["cell_id"]}',{}).get('result')=='合格' for c in cells)
         compatible=compatible and max((c['capacity_ah'] for c in cells if c),default=0)-min((c['capacity_ah'] for c in cells if c),default=0)<=10
         origin_ok=bool(packs) and all(p and p.get('owner_chain') and p['owner_chain'][-1]==p.get('claimed_owner') and not p.get('recalled') and (len({e.get('claimed_owner') for e in events if e['kind']=='origin' and e['pack_id']==p['pack_id']})==1 or p.get('transfer_documented',False)) for p in packs)
-        protection=(s.get('protection_ok',False)
-                    and s.get('protection_trip_ms',999)<=s.get('max_trip_ms',0)
-                    and len(set(s.get('signed_by',[])))>=2
-                    and instant(s['signed_at'])<instant(s['permit_until']))
+        protection=protection_capture.evaluate(s)
         alarm=s.get('alarm',False)
         confirmed_alarm=alarm and s.get('alarm_sensor_valid') and s.get('alarm_witnessed')
         shared_alarm=any(c and c.get('pack_id') in alarm_packs for c in cells)
@@ -87,3 +85,4 @@ RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['ow
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]
     return [(subsystem,name,str(event[key]),{field:event.get(field) for field in fields}) for name,fields in specs]
+
