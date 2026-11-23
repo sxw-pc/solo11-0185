@@ -1,12 +1,16 @@
 import argparse
 import json
 from pathlib import Path
-from .store import connect,import_file,report,audit
+from .store import (connect, import_file, report, audit,
+                    import_auction_file, run_allocation, auction_report,
+                    auction_audit)
 
 IMPORTS={'origin-import': 'origin', 'test-import': 'test', 'string-import': 'string'}
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='secondlife')
-    parser.add_argument('command',choices=list(IMPORTS)+['demo','report','audit'])
+    parser.add_argument('command',choices=list(IMPORTS)+[
+        'demo','report','audit','auction-import','auction-allocate',
+        'auction-report','auction-audit'])
     parser.add_argument('--db',default='state.sqlite')
     parser.add_argument('--file')
     args=parser.parse_args(argv)
@@ -21,8 +25,14 @@ def main(argv=None):
             result.append(import_file(db,IMPORTS[command],root/file))
         result={'imports':result,'report':report(db)}
     elif args.command=='report': result=report(db)
-    else: result=audit(db)
+    elif args.command=='audit': result=audit(db)
+    elif args.command=='auction-import':
+        if not args.file: parser.error('--file required')
+        result=import_auction_file(db,args.file)
+    elif args.command=='auction-allocate': result=run_allocation(db)
+    elif args.command=='auction-report': result=auction_report(db)
+    else: result=auction_audit(db)
     print(json.dumps(result,ensure_ascii=False,indent=2))
-    return 0 if args.command!='audit' or result['ok'] else 1
+    return 0 if args.command not in ('audit','auction-audit') or result['ok'] else 1
 
 DEMO=[('origin-import', 'origin-ok.json'), ('test-import', 'test-ok.json'), ('string-import', 'string-ok.json')]

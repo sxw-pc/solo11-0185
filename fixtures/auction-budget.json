@@ -1,0 +1,133 @@
+[
+  {
+    "id": "BR-A",
+    "kind": "bidder_registration",
+    "bidder": "A",
+    "budget": 100,
+    "secret": "secret-A",
+    "version": 1
+  },
+  {
+    "id": "BR-B",
+    "kind": "bidder_registration",
+    "bidder": "B",
+    "budget": 100,
+    "secret": "secret-B",
+    "version": 1
+  },
+  {
+    "id": "CF-A1",
+    "kind": "cipher_file",
+    "bidder": "A",
+    "lot_id": "LOT1",
+    "cipher_sha": "3ba4761086d4b285edfddd5102251ac2f35ae4fc4045588f9bfffb95fda4edba",
+    "raw_b64": "Q0lQSEVSOjpBOjpMT1QxOjo4MDo6QklELUEx",
+    "decrypted_at": "2026-11-20T09:00:00Z",
+    "witnessed_at": "2026-11-20T09:05:00Z"
+  },
+  {
+    "id": "CF-A2",
+    "kind": "cipher_file",
+    "bidder": "A",
+    "lot_id": "LOT2",
+    "cipher_sha": "954a3b406126e609a9c771e4c24bc128015c8a8b3b7f6ed73d0efad96b409d21",
+    "raw_b64": "Q0lQSEVSOjpBOjpMT1QyOjo4MDo6QklELUEy",
+    "decrypted_at": "2026-11-20T09:01:00Z",
+    "witnessed_at": "2026-11-20T09:06:00Z"
+  },
+  {
+    "id": "CF-B1",
+    "kind": "cipher_file",
+    "bidder": "B",
+    "lot_id": "LOT1",
+    "cipher_sha": "c3d16729d119371fcf688d82090cbdd74243fa62aaf5250257c953cd6e868911",
+    "raw_b64": "Q0lQSEVSOjpCOjpMT1QxOjo3MDo6QklELUIx",
+    "decrypted_at": "2026-11-20T09:02:00Z",
+    "witnessed_at": "2026-11-20T09:07:00Z"
+  },
+  {
+    "id": "CF-B2",
+    "kind": "cipher_file",
+    "bidder": "B",
+    "lot_id": "LOT2",
+    "cipher_sha": "3fef6c1756daba758ff82997655c8b17852041cb29643dabd7644afcfe212c88",
+    "raw_b64": "Q0lQSEVSOjpCOjpMT1QyOjo3MDo6QklELUIy",
+    "decrypted_at": "2026-11-20T09:03:00Z",
+    "witnessed_at": "2026-11-20T09:08:00Z"
+  },
+  {
+    "id": "EV-BID-A1",
+    "kind": "bid",
+    "bid_no": "BID-A1",
+    "bidder": "A",
+    "lot_id": "LOT1",
+    "amount": 80,
+    "cipher_sha": "3ba4761086d4b285edfddd5102251ac2f35ae4fc4045588f9bfffb95fda4edba",
+    "witnessed_at": "2026-11-20T09:05:00Z",
+    "signature": "2373ed89644823e2ba1d22efbeee05aace40145af436edd50ebc1216bf502a1b"
+  },
+  {
+    "id": "EV-BID-A2",
+    "kind": "bid",
+    "bid_no": "BID-A2",
+    "bidder": "A",
+    "lot_id": "LOT2",
+    "amount": 80,
+    "cipher_sha": "954a3b406126e609a9c771e4c24bc128015c8a8b3b7f6ed73d0efad96b409d21",
+    "witnessed_at": "2026-11-20T09:06:00Z",
+    "signature": "fb779106f652fa3a186707a066bb78ed57362f4190cd4698f2a22d8e498a580b"
+  },
+  {
+    "id": "EV-BID-B1",
+    "kind": "bid",
+    "bid_no": "BID-B1",
+    "bidder": "B",
+    "lot_id": "LOT1",
+    "amount": 70,
+    "cipher_sha": "c3d16729d119371fcf688d82090cbdd74243fa62aaf5250257c953cd6e868911",
+    "witnessed_at": "2026-11-20T09:07:00Z",
+    "signature": "fbe7c44619d0795ec1d037e689c02c956bb16f950b5b3839d0ff7cbe378a317d"
+  },
+  {
+    "id": "EV-BID-B2",
+    "kind": "bid",
+    "bid_no": "BID-B2",
+    "bidder": "B",
+    "lot_id": "LOT2",
+    "amount": 70,
+    "cipher_sha": "3fef6c1756daba758ff82997655c8b17852041cb29643dabd7644afcfe212c88",
+    "witnessed_at": "2026-11-20T09:08:00Z",
+    "signature": "e8d248574830abcd139e9044d73adb2394ddf1de5aabf641a69bb989005b6c28"
+  },
+  {
+    "id": "LOCK-LOT1",
+    "kind": "priority_lock",
+    "lot_id": "LOT1",
+    "bidder": "A",
+    "signed_by": [
+      "A",
+      "station"
+    ],
+    "version": 1
+  },
+  {
+    "id": "LIST-LOT1",
+    "kind": "listing",
+    "lot_id": "LOT1",
+    "pack_id": "P1",
+    "origin_version": 1,
+    "test_version": 1,
+    "status": "eligible",
+    "version": 1
+  },
+  {
+    "id": "LIST-LOT2",
+    "kind": "listing",
+    "lot_id": "LOT2",
+    "pack_id": "P2",
+    "origin_version": 1,
+    "test_version": 1,
+    "status": "eligible",
+    "version": 1
+  }
+]
