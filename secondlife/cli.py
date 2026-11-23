@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from .store import connect,import_file,report,audit
 
-IMPORTS={'origin-import': 'origin', 'test-import': 'test', 'string-import': 'string'}
+IMPORTS={'origin-import': 'origin', 'test-import': 'test', 'string-import': 'string', 'alarm-import': ('alarm_capture', 'alarm_link')}
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='secondlife')
     parser.add_argument('command',choices=list(IMPORTS)+['demo','report','audit'])

@@ -17,6 +17,44 @@ def retest_agrees(t):
             and abs(t.get('resistance_mohm',999)-t.get('retest_resistance_mohm',-999))<=2
             and abs(t.get('temp_c',999)-t.get('retest_temp_c',-999))<=5)
 
+def effective_links(events):
+    """人工关联的最新签认状态：双人审核可撤回未封账关联；已封账关联的撤回请求被拒绝。"""
+    by_link={}
+    for e in events:
+        if e['kind']=='alarm_link': by_link[e.get('link_id',e['id'])]=e
+    links=[]; rejected=[]
+    for link_id,link in by_link.items():
+        if link.get('retracted'):
+            if not link.get('sealed') and len(set(link.get('retracted_by',[])))>=2:
+                continue  # 双人审核撤回未封账关联
+            rejected.append(link_id)  # 已封账或审核不足两人：不得篡改旧签认
+        links.append({'link_id':link_id,'alarms':link.get('alarms',[]),'sealed':bool(link.get('sealed'))})
+    return links,rejected
+
+def incident_graphs(events):
+    """按退役包作用域输出可重算的 告警→事故单→检修设备 编组图。"""
+    captures=[e for e in events if e['kind']=='alarm_capture']
+    if not captures: return {}
+    links,_=effective_links(events)
+    graph=alarm_capture.group_incidents(captures,links)
+    pack_of={c['id']:c.get('pack_id') for c in captures}
+    link_alarms={lk['link_id']:lk['alarms'] for lk in links}
+    scopes={c.get('pack_id'):{'incidents':[]} for c in captures}
+    for incident in graph['incidents']:
+        scopes[incident['pack_id']]['incidents'].append(incident)
+    for scope,g in scopes.items():
+        incident_ids={i['incident_id'] for i in g['incidents']}
+        g['window_seconds']=graph['window_seconds']
+        g['protocol']=graph['protocol']
+        g['incident_count']=len(g['incidents'])
+        g['conflicts']=[c for c in graph['conflicts'] if c['pack_id']==scope]
+        g['duplicates']={k:v for k,v in graph['duplicates'].items() if pack_of.get(k)==scope}
+        g['pending']=[p for p in graph['pending'] if pack_of.get(p)==scope]
+        g['dangling_links']=sorted({x for x in graph['dangling_links'] if any(pack_of.get(a)==scope for a in link_alarms.get(x,()))})
+        g['assignment']={a:i for a,i in graph['assignment'].items() if i in incident_ids}
+        g['alarm_table']=[r for r in graph['alarm_table'] if r['incident'] in incident_ids]
+    return scopes
+
 def calculate(events):
     origins=latest(events,'origin','pack_id')
     tests=latest(events,'test','cell_id')
@@ -53,6 +91,10 @@ def calculate(events):
     for s in strings.values():
         if alarm_capture.confirmed(s):
             alarm_packs.update(tests[c]['pack_id'] for c in s.get('cells',[]) if c in tests)
+    graphs=incident_graphs(events)
+    for scope,graph in graphs.items():
+        if graph['incident_count']:
+            alarm_packs.add(scope)  # 事故单里的真实同包传播范围才进入隔离输入
     for string_id,s in strings.items():
         cells=[tests.get(x) for x in s.get('cells',[])]
         packs=[origins.get(c.get('pack_id')) for c in cells if c]
@@ -81,9 +123,27 @@ def calculate(events):
             out['告警隔离追责']['result']='待核'
         retire_results=[out[f'退役拆组许可:{sid}']['result'] for sid in strings]
         if all(x=='许可' for x in retire_results): out['退役拆组许可']['result']='许可'
+    if graphs:
+        total=0
+        for scope,graph in sorted(graphs.items(),key=lambda kv: str(kv[0])):
+            total+=graph['incident_count']
+            out[f'事故单编组:{scope}']=d(f"{graph['incident_count']}单",'同包告警按180秒全局跨度与有效签认关联最小编组，不取相邻连通',*(sorted(graph['assignment'])+graph['pending']))
+            for incident in graph['incidents']:
+                out[f"事故单检修责任:{incident['incident_id']}"]=d('、'.join(incident['repair_devices']),'检修责任取自事故单内告警设备，不取同源包集合大小',*incident['alarms'])
+                states.append(('告警与事故账',incident['incident_id'],'窗冲突' if incident['window_violation'] else '已编组',incident['version']))
+            if graph['conflicts']:
+                out[f'签认时间冲突:{scope}']=d('冲突','已签关联与180秒时间硬约束冲突，给出冲突子集',*(a for c in graph['conflicts'] for a in c['alarms']))
+            if graph['duplicates']:
+                out[f'疑似重复波形:{scope}']=d(f"{len(graph['duplicates'])}段去重",'同包同波形哈希去重，原件保留于编组图',*sorted(graph['duplicates']))
+            if graph['pending']:
+                out[f'告警采入待核:{scope}']=d(f"{len(graph['pending'])}条待核",'传感器无效、无目击人或缺波形的采入不参与编组',*graph['pending'])
+        out['事故单编组总数']=d(f'{total}单','事故计数为各包事故单求和，不取alarm_packs大小',*(a for g in graphs.values() for a in sorted(g['assignment'])))
+        _,rejected=effective_links(events)
+        if rejected:
+            out['签认篡改防护']=d('拒绝','已封账关联或审核不足两人的撤回请求被拒绝',*sorted(rejected))
     return out,states
 
-RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['owner_valid', 'duplicate']), ('召回公告', ['recalled'])]), 'test': ('检测与分选账', 'cell_id', [('检测读数', ['capacity_ah', 'resistance_mohm', 'temp_c', 'sample_count']), ('校准复测', ['calibrated', 'retest_independent'])]), 'string': ('组串与投运账', 'string_id', [('组串配置', ['cells', 'protection_ok']), ('运行告警', ['alarm'])])}
+RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['owner_valid', 'duplicate']), ('召回公告', ['recalled'])]), 'test': ('检测与分选账', 'cell_id', [('检测读数', ['capacity_ah', 'resistance_mohm', 'temp_c', 'sample_count']), ('校准复测', ['calibrated', 'retest_independent'])]), 'string': ('组串与投运账', 'string_id', [('组串配置', ['cells', 'protection_ok']), ('运行告警', ['alarm'])]), 'alarm_capture': ('告警与事故账', 'id', [('采样摘要', ['pack_id', 'device_id', 'sampled_at', 'clock_offset_ms']), ('波形与目击', ['waveform', 'witnessed_by', 'sensor_valid'])]), 'alarm_link': ('告警与事故账', 'link_id', [('人工关联签认', ['alarms', 'sealed', 'retracted', 'retracted_by'])])}
 
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]

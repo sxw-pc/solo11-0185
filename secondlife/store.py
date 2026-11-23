@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS decisions (name TEXT PRIMARY KEY, result TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS entity_state (subsystem TEXT NOT NULL, entity_id TEXT NOT NULL, state TEXT NOT NULL, version INTEGER NOT NULL, PRIMARY KEY(subsystem,entity_id));
 CREATE TABLE IF NOT EXISTS decision_history (revision INTEGER NOT NULL, name TEXT NOT NULL, result TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(revision,name));
 CREATE TABLE IF NOT EXISTS business_record (subsystem TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, source_event TEXT NOT NULL, version INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(subsystem,entity_type,entity_id,version));
+CREATE TABLE IF NOT EXISTS incident_graph (scope TEXT NOT NULL, version INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(scope,version));
 """
 
 def connect(path):
@@ -21,6 +22,8 @@ def connect(path):
     return db
 
 def import_file(db, kind, file):
+    kinds=(kind,) if isinstance(kind,str) else tuple(kind)
+    label=kind if isinstance(kind,str) else ','.join(kinds)
     raw=Path(file).read_bytes()
     sha=hashlib.sha256(raw).hexdigest()
     payload=json.loads(raw)
@@ -32,7 +35,7 @@ def import_file(db, kind, file):
     try:
         seq=db.execute('SELECT COALESCE(MAX(seq),0) FROM events').fetchone()[0]
         for event in payload:
-            if event.get('kind')!=kind or not event.get('id'):
+            if event.get('kind') not in kinds or not event.get('id'):
                 raise ValueError('event kind/id mismatch')
             body=json.dumps(event,ensure_ascii=False,sort_keys=True,separators=(',',':'))
             old=db.execute('SELECT body FROM events WHERE event_id=?',(event['id'],)).fetchone()
@@ -40,8 +43,8 @@ def import_file(db, kind, file):
                 if old[0]!=body: raise ValueError('same event id with different content')
                 continue
             seq+=1
-            db.execute('INSERT INTO events VALUES (?,?,?,?,?)',(event['id'],kind,body,sha,seq))
-        db.execute('INSERT INTO source_files(sha,kind,raw) VALUES (?,?,?)',(sha,kind,raw))
+            db.execute('INSERT INTO events VALUES (?,?,?,?,?)',(event['id'],event['kind'],body,sha,seq))
+        db.execute('INSERT INTO source_files(sha,kind,raw) VALUES (?,?,?)',(sha,label,raw))
         rebuild(db)
         db.execute('RELEASE SAVEPOINT ingest')
         db.commit()
@@ -67,12 +70,28 @@ def rebuild(db):
     for event in events:
         for subsystem,entity_type,entity_id,body in rules.business_records(event):
             db.execute('INSERT OR REPLACE INTO business_record VALUES (?,?,?,?,?,?)',(subsystem,entity_type,entity_id,event['id'],event.get('version',1),json.dumps(body,ensure_ascii=False,sort_keys=True)))
+    for scope,graph in rules.incident_graphs(events).items():
+        body=json.dumps(graph,ensure_ascii=False,sort_keys=True)
+        row=db.execute('SELECT version,body FROM incident_graph WHERE scope=? ORDER BY version DESC LIMIT 1',(scope,)).fetchone()
+        if row is None:
+            db.execute('INSERT INTO incident_graph VALUES (?,?,?)',(scope,1,body))
+        elif row['body']!=body:
+            # 迟到采样或签认变化触发新版本；旧版本整图保留，不暗改已签单
+            db.execute('INSERT INTO incident_graph VALUES (?,?,?)',(scope,row['version']+1,body))
 
 def report(db):
+    graphs=[]
+    for r in db.execute('SELECT * FROM incident_graph ORDER BY scope,version'):
+        item=dict(r); item['body']=json.loads(item['body']); graphs.append(item)
+    latest={}
+    for g in graphs: latest[g['scope']]=g['body']
+    alarm_table=sorted((row for scope in latest for row in latest[scope]['alarm_table']),key=lambda r: r['alarm'])
     return {'decisions':{r['name']:{'result':r['result'],'reason':r['reason'],'evidence':json.loads(r['evidence'])} for r in db.execute('SELECT * FROM decisions ORDER BY name')},
             'entities':[dict(r) for r in db.execute('SELECT * FROM entity_state ORDER BY subsystem,entity_id')],
             'business_records':[dict(r) for r in db.execute('SELECT * FROM business_record ORDER BY subsystem,entity_type,entity_id,version')],
-            'sources':[dict(r) for r in db.execute('SELECT sha,kind FROM source_files ORDER BY sha')]}
+            'sources':[dict(r) for r in db.execute('SELECT sha,kind FROM source_files ORDER BY sha')],
+            'incident_graphs':graphs,
+            'alarm_table':alarm_table}
 
 def audit(db):
     before=report(db)
@@ -82,7 +101,7 @@ def audit(db):
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(raw); path=tmp.name
-        try: import_file(memory,kind,path)
+        try: import_file(memory,tuple(kind.split(',')),path)
         finally: Path(path).unlink()
     after=report(memory)
     return {'ok':before==after,'source_count':len(source_rows),'decision_count':len(before['decisions'])}
