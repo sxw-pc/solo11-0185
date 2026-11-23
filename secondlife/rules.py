@@ -84,6 +84,11 @@ def calculate(events):
 
 RECORD_SPECS={'origin': ('来源与回收账', 'pack_id', [('来源证明', ['owner_valid', 'duplicate']), ('召回公告', ['recalled'])]), 'test': ('检测与分选账', 'cell_id', [('检测读数', ['capacity_ah', 'resistance_mohm', 'temp_c', 'sample_count']), ('校准复测', ['calibrated', 'retest_independent'])]), 'string': ('组串与投运账', 'string_id', [('组串配置', ['cells', 'protection_ok']), ('运行告警', ['alarm'])])}
 
+def entity_key(event):
+    """稳定实体键：kind:业务主键。跨机构、跨文件重排版、跨导入顺序保持稳定。"""
+    _,key,_=RECORD_SPECS[event['kind']]
+    return f"{event['kind']}:{event[key]}"
+
 def business_records(event):
     subsystem,key,specs=RECORD_SPECS[event['kind']]
     return [(subsystem,name,str(event[key]),{field:event.get(field) for field in fields}) for name,fields in specs]

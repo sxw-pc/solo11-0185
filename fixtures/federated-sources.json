@@ -1,0 +1,50 @@
+{
+  "description": "两家检测机构提交给回收站的退役包来源文件。F1/F2 是机构甲的同一断言（仅空白与键序不同、各自重新签名），F3 是机构乙的同号（O1）不同机构断言（pack P2）。签名针对文件原字节；trust_registry 是离线原型的信任锚，部署时应替换为 PKI 根证书。",
+  "trust_registry": {
+    "root_key": "secondlife-offline-root-2026",
+    "keys": {
+      "甲": "892f90d8dd0ea7046ad323b2107e1fae535f1f2e475f5ca96dbbeccfc14775a5",
+      "乙": "7777dd208849e7b2f726a7f33079a1b3409680fc34143ee59c2aa0c61fe57ac9",
+      "回收站": "2f2ec8ca8499ba098a7a4d28ee8103cc023ea44c50e0cf52c9f5140c3a025086"
+    }
+  },
+  "certificates": [
+    {
+      "agency_id": "甲",
+      "key_id": "甲-key-1",
+      "algorithm": "HMAC-SHA256",
+      "verification_key": "892f90d8dd0ea7046ad323b2107e1fae535f1f2e475f5ca96dbbeccfc14775a5",
+      "cert_signature": "9dd010fc658d654b0590df580205d9dbe3dd7220b15a8d37d231d5706531c339"
+    },
+    {
+      "agency_id": "乙",
+      "key_id": "乙-key-1",
+      "algorithm": "HMAC-SHA256",
+      "verification_key": "7777dd208849e7b2f726a7f33079a1b3409680fc34143ee59c2aa0c61fe57ac9",
+      "cert_signature": "a5afc616d45b66c1dfe4fea941bbe03ac9abc19b3afd83e31695483edb773e2e"
+    }
+  ],
+  "files": [
+    {
+      "name": "F1",
+      "kind": "origin",
+      "issuer": "甲",
+      "content": "[{\"id\":\"O1\",\"kind\":\"origin\",\"issuer\":\"甲\",\"pack_id\":\"P1\",\"owner_chain\":[\"factory\",\"fleet\",\"recycler\"],\"claimed_owner\":\"recycler\",\"transfer_documented\":false,\"recalled\":false,\"version\":1}]",
+      "signature": "fa47092761ffc0f104ed5c4fb63a16ba4a6784c40853b41109a84308aa28ce43"
+    },
+    {
+      "name": "F2",
+      "kind": "origin",
+      "issuer": "甲",
+      "content": "[ { \"version\" : 1 , \"recalled\" : false , \"transfer_documented\" : false , \"claimed_owner\" : \"recycler\" , \"owner_chain\" : [ \"factory\" , \"fleet\" , \"recycler\" ] , \"pack_id\" : \"P1\" , \"issuer\" : \"甲\" , \"kind\" : \"origin\" , \"id\" : \"O1\" } ]",
+      "signature": "1fa5c7b9b81262fc86b8217fc3eba2c1947a7f98d02d6bb23679c787c6c83c8f"
+    },
+    {
+      "name": "F3",
+      "kind": "origin",
+      "issuer": "乙",
+      "content": "[{\"id\":\"O1\",\"kind\":\"origin\",\"issuer\":\"乙\",\"pack_id\":\"P2\",\"owner_chain\":[\"factory\",\"fleet\",\"recycler\"],\"claimed_owner\":\"recycler\",\"transfer_documented\":false,\"recalled\":false,\"version\":1}]",
+      "signature": "c4420d63bc4c653f994a27e5e428550095d6f0707e96eeceb6778c3f55722b9d"
+    }
+  ]
+}
